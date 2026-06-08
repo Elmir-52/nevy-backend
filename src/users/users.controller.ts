@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, NotImplementedException, Param, Patch, Post } from "@nestjs/common";
-import { CreateUserDto, GetUserDto, GetUserParams, UpdateUserDto } from "./dto";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotImplementedException, Param, Patch, Post } from "@nestjs/common";
+import { CreateUserDto, GetUserDto, GetUserParamsDto, UpdateUserDto } from "./dto";
 import { UsersService } from "./users.service";
 
 @Controller('users')
@@ -7,7 +7,7 @@ export class UsersController {
     constructor(private readonly usersServise: UsersService) {}
 
     @Get(':userId')
-    getOne(@Param() { userId }: GetUserParams): Promise<GetUserDto> {
+    getOne(@Param() { userId }: GetUserParamsDto): Promise<GetUserDto> {
         return this.usersServise.getOne(userId);
     }
 
@@ -17,17 +17,18 @@ export class UsersController {
         return this.usersServise.getOne(userId);
     }
 
-    @Patch()
+    @Patch(':userId')
     async update(
-        @Param() { userId }: GetUserParams, 
+        @Param() { userId }: GetUserParamsDto, 
         @Body() data: UpdateUserDto
     ): Promise<GetUserDto> {
-        await this.usersServise.update(data);
+        await this.usersServise.update(userId, data);
         return this.usersServise.getOne(userId);
     }
 
-    @Delete()
-    delete(@Param() { userId }: GetUserParams): Promise<void> {
+    @Delete(':userId')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    delete(@Param() { userId }: GetUserParamsDto): Promise<void> {
         return this.usersServise.delete(userId);
     }
 }
