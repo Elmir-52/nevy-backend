@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
-import { CreateUserDto, GetUserDto, UpdateUserDto } from "./dto";
+import { CreateUserDto, UpdateUserDto, UserResponseDto } from "./dto";
 import { SqlService } from "src/postgres/sql.service";
 import { UsersMapper } from "./users.mapper";
 import { DatabaseUser } from "./interfaces/database-user.interface";
@@ -8,7 +8,7 @@ import { DatabaseUser } from "./interfaces/database-user.interface";
 export class UsersService {
     constructor(private sqlService: SqlService) {}
 
-    async getOne(userId: string): Promise<GetUserDto> {
+    async getOne(userId: string): Promise<UserResponseDto> {
         const [ dbUser ] = await this.sqlService.sql<DatabaseUser[]>`
             SELECT * FROM users
             WHERE user_id = ${userId};
@@ -18,7 +18,7 @@ export class UsersService {
             throw new NotFoundException('User not found');
         }
 
-        return UsersMapper.toGetUserDTO(dbUser);
+        return UsersMapper.toUserResponseDTO(dbUser);
     }
 
     async create(data: CreateUserDto): Promise<string> {
