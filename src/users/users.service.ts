@@ -24,8 +24,8 @@ export class UsersService {
     async create(data: CreateUserDto): Promise<string> {
         const [ dbUser ] = await this.sqlService.sql`
             INSERT INTO users 
-            (email, password, created_at)
-            VALUES (${data.email}, ${data.password}, ${data.createdAt})
+            (email, password)
+            VALUES (${data.email}, ${data.password})
             RETURNING * ;
         `;
 
