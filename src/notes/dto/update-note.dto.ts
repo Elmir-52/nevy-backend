@@ -1,4 +1,4 @@
-import { IsDateString, IsString } from "class-validator";
+import { IsString } from "class-validator";
 
 export class UpdateNoteDto {
     @IsString()
@@ -6,7 +6,4 @@ export class UpdateNoteDto {
 
     @IsString()
     content!: string;
-
-    @IsDateString()
-    updatedAt!: Date;
 }

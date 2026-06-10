@@ -5,7 +5,7 @@ CREATE TABLE notes (
     user_id UUID NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
     title TEXT,
     content TEXT,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     color varchar(15) NOT NULL
 )

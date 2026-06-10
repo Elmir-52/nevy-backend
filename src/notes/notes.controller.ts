@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Patch, Post, Query } from "@nestjs/common";
 import { NotesService } from "./notes.service";
 import { CreateNoteDto, GetNoteParamsDto, GetNotesQueryDto, NoteResponseDto, UpdateNoteDto } from "./dto";
 
@@ -27,6 +27,7 @@ export class NotesController {
     }
 
     @Delete(':noteId')
+    @HttpCode(HttpStatus.NO_CONTENT)
     delete(@Param() { noteId }: GetNoteParamsDto): Promise<void> {
         return this.notesService.delete(noteId);
     }

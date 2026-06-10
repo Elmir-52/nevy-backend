@@ -1,4 +1,4 @@
-import { IsDateString, IsHexColor, IsString, IsUUID, Length } from "class-validator";
+import { IsHexColor, IsString, IsUUID, Length } from "class-validator";
 
 export class CreateNoteDto {
     @IsUUID()
@@ -9,12 +9,6 @@ export class CreateNoteDto {
 
     @IsString()
     content!: string;
-
-    @IsDateString()
-    createdAt!: Date;
-
-    @IsDateString()
-    updatedAt!: Date;
 
     @IsHexColor()
     @Length(7, 7)

@@ -38,13 +38,11 @@ export class NotesService {
     async create(data: CreateNoteDto): Promise<void> {
         await this.sqlService.sql`
             INSERT INTO notes
-            (user_id, title, content, created_at, updated_at, color)
+            (user_id, title, content, color)
             VALUES (
                 ${data.userId},
                 ${data.title}, 
                 ${data.content}, 
-                ${data.createdAt}, 
-                ${data.updatedAt}, 
                 ${data.color}
             );
         `;
@@ -54,7 +52,7 @@ export class NotesService {
     async update(noteId: string, data: UpdateNoteDto): Promise<void> {
         await this.sqlService.sql`
             UPDATE notes
-            SET title = ${data.title}, content = ${data.content}, updated_at = ${data.updatedAt}
+            SET title = ${data.title}, content = ${data.content}, updated_at = NOW()
             WHERE note_id = ${noteId};
         `;
     }
