@@ -3,12 +3,13 @@ import { CreateUserDto, UpdateUserDto, UserResponseDto } from "./dto";
 import { SqlService } from "src/postgres/sql.service";
 import { UsersMapper } from "./users.mapper";
 import { DatabaseUser } from "./interfaces/database-user.interface";
+import { UserEntity } from "./user.entity";
 
 @Injectable()
 export class UsersService {
     constructor(private sqlService: SqlService) {}
 
-    async getOne(userId: string): Promise<UserResponseDto> {
+    async getOne(userId: string): Promise<UserEntity> {
         const [ dbUser ] = await this.sqlService.sql<DatabaseUser[]>`
             SELECT * FROM users
             WHERE user_id = ${userId};
@@ -18,18 +19,31 @@ export class UsersService {
             throw new NotFoundException('User not found');
         }
 
-        return UsersMapper.toUserResponseDTO(dbUser);
+        return UsersMapper.toUserEntity(dbUser);
     }
 
-    async create(data: CreateUserDto): Promise<string> {
-        const [ dbUser ] = await this.sqlService.sql`
+    async getUserByEmail(email: string): Promise<UserEntity | undefined> {
+        const [ dbUser ] = await this.sqlService.sql<DatabaseUser[]>`
+            SELECT * FROM users
+            WHERE email = ${email};
+        `;
+
+        if (!dbUser) {
+            return;
+        }
+
+        return UsersMapper.toUserEntity(dbUser);
+    }
+
+    async create(data: CreateUserDto): Promise<UserResponseDto> {
+        const [ dbUser ] = await this.sqlService.sql<DatabaseUser[]>`
             INSERT INTO users 
             (email, password)
             VALUES (${data.email}, ${data.password})
             RETURNING * ;
         `;
 
-        return dbUser.user_id;
+        return UsersMapper.toUserResponseDTO(dbUser);
     }
 
     async update(userId: string, data: UpdateUserDto): Promise<void> {
