@@ -9,7 +9,7 @@ import { RefreshTokenEntity } from "./entities/refresh-token.entity";
 import { SqlService } from "src/postgres/sql.service";
 import { DatabaseRefreshToken } from "./interfaces/database-refresh-token";
 import { AuthMapper } from "./auth.mapper";
-import { AuthResponseDto, JwtPayloadDto, LoginDto, RegisterDto } from "./dto";
+import { AuthDto, JwtPayloadDto, LoginDto, RegisterDto } from "./dto";
 
 @Injectable()
 export class AuthService {
@@ -19,7 +19,7 @@ export class AuthService {
         private sqlService: SqlService,
     ) {}
 
-    async register(data: RegisterDto): Promise<AuthResponseDto> {
+    async register(data: RegisterDto): Promise<AuthDto> {
         const user: UserEntity | undefined = await this.usersService.getUserByEmail(data.email);
 
         if (user) {
@@ -40,7 +40,7 @@ export class AuthService {
         return this.generateTokens(createdUser);
     }
 
-    async login(data: LoginDto): Promise<AuthResponseDto> {
+    async login(data: LoginDto): Promise<AuthDto> {
         const user: UserEntity | undefined = await this.usersService.getUserByEmail(data.email);
 
         if (!user) {
@@ -59,9 +59,9 @@ export class AuthService {
         await this.deleteRefreshTokens(userId);
     }
 
-    async updateTokens(rawRefreshToken: string): Promise<AuthResponseDto> {
-        const hashedRefreshToken = this.hashToken(rawRefreshToken);
-        const now = new Date();
+    async updateTokens(rawRefreshToken: string): Promise<AuthDto> {
+        const hashedRefreshToken: string = this.hashToken(rawRefreshToken);
+        const now: Date = new Date();
 
         const [ dbOldRefreshToken ] = await this.sqlService.sql<DatabaseRefreshToken[]>`
             SELECT * FROM refresh_tokens
@@ -90,15 +90,15 @@ export class AuthService {
     }
 
     // приватные методы сервиса
-    private async createRefreshToken(user: UserEntity) {
+    private async createRefreshToken(user: UserEntity): Promise<string> {
         await this.deleteRefreshTokens(user.userId);
 
-        const rawRefreshToken = this.generateRefreshToken();
-        const hashedRefreshToken = this.hashToken(rawRefreshToken);
+        const rawRefreshToken: string = this.generateRefreshToken();
+        const hashedRefreshToken: string = this.hashToken(rawRefreshToken);
 
-        const rawExpiresAt = new Date();
+        const rawExpiresAt: Date = new Date();
         rawExpiresAt.setDate(rawExpiresAt.getDate() + 30); // срок жизни рефреша 30 дней
-        const expiresAt = rawExpiresAt.toISOString();
+        const expiresAt: string = rawExpiresAt.toISOString();
 
         await this.sqlService.sql`
             INSERT INTO refresh_tokens
@@ -117,17 +117,17 @@ export class AuthService {
         `;
     }
 
-    private async generateTokens(user: UserEntity): Promise<AuthResponseDto> {
+    private async generateTokens(user: UserEntity): Promise<AuthDto> {
         // payload нельзя создавать через new JwtPayloadDto, иначе будет ошибка
-        const payload = {
+        const payload: JwtPayloadDto = {
             userId: user.userId,
             email: user.email,
         }
 
-        const accessToken = await this.jwtService.signAsync(payload);
-        const rawRefreshToken = await this.createRefreshToken(user);
+        const accessToken: string = await this.jwtService.signAsync(payload);
+        const rawRefreshToken: string = await this.createRefreshToken(user);
 
-        return new AuthResponseDto(accessToken, rawRefreshToken);
+        return new AuthDto(accessToken, rawRefreshToken);
     }
 
     // вспомогательные методы
