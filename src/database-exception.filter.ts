@@ -14,12 +14,15 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
         switch(exception.code) {
             case '23505':
                 status = HttpStatus.CONFLICT;
-                message = 'A record with such data already exists';
+                message = 'Such an entity already exists';
                 break;
             case '22P02':
                 status = HttpStatus.BAD_REQUEST;
                 message = 'Data not valid';
                 break;
+            case '22001':
+                status = HttpStatus.BAD_REQUEST;
+                message = 'Data not valid';
         }
 
         return responce.status(status).json({

@@ -1,15 +1,15 @@
 import { ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from "@nestjs/common";
 import { UsersService } from "src/users/users.service";
-import { LogingDto } from "./dto/login.dto";
-import { AuthResponseDto } from "./dto/auth-response.dto";
-import { UserEntity } from "src/users/user.entity";
+import { UserEntity } from "src/users/entities/user.entity";
 import bcrypt from 'bcrypt'
 import { JwtService } from "@nestjs/jwt";
-import { RegisterDto } from "./dto/register.dto";
 import { CreateUserDto } from "src/users/dto";
 import * as crypto from 'crypto';
 import { RefreshTokenEntity } from "./entities/refresh-token.entity";
 import { SqlService } from "src/postgres/sql.service";
+import { DatabaseRefreshToken } from "./interfaces/database-refresh-token";
+import { AuthMapper } from "./auth.mapper";
+import { AuthResponseDto, JwtPayloadDto, LoginDto, RegisterDto } from "./dto";
 
 @Injectable()
 export class AuthService {
@@ -32,18 +32,15 @@ export class AuthService {
         createUser.email = data.email;
         createUser.password = hashPassword;
 
-        const createdUser = await this.usersService.create(createUser);
-
-        const getUser: UserEntity | undefined = await this.usersService.getUserByEmail(createdUser.email);
-
-        if (getUser) {
-            return this.generateTokens(getUser);
+        const createdUser: UserEntity = await this.usersService.create(createUser);
+        if (!createdUser) {
+            throw new InternalServerErrorException('Internal server error');
         }
-
-        throw new InternalServerErrorException('Internal server error');
+        
+        return this.generateTokens(createdUser);
     }
 
-    async login(data: LogingDto): Promise<AuthResponseDto> {
+    async login(data: LoginDto): Promise<AuthResponseDto> {
         const user: UserEntity | undefined = await this.usersService.getUserByEmail(data.email);
 
         if (!user) {
@@ -58,49 +55,50 @@ export class AuthService {
         return this.generateTokens(user);
     }
 
+    async logout(userId: string): Promise<void> {
+        await this.deleteRefreshTokens(userId);
+    }
+
     async updateTokens(rawRefreshToken: string): Promise<AuthResponseDto> {
         const hashedRefreshToken = this.hashToken(rawRefreshToken);
         const now = new Date();
 
-        const [ oldRefreshToken ] = await this.sqlService.sql`
+        const [ dbOldRefreshToken ] = await this.sqlService.sql<DatabaseRefreshToken[]>`
             SELECT * FROM refresh_tokens
             WHERE token_hash = ${hashedRefreshToken};
         `;
 
-        const expiresAt = new Date(oldRefreshToken?.expires_at);
+        await this.deleteRefreshTokens(dbOldRefreshToken.user_id);
 
-        if (!oldRefreshToken || expiresAt < now) {
+        if (!dbOldRefreshToken) {
             throw new UnauthorizedException('Invalid refresh token');
         }
 
-        const user = await this.usersService.getOne(oldRefreshToken.user_id);
+        const oldRefreshToken: RefreshTokenEntity = AuthMapper.toRefreshTokenEntity(dbOldRefreshToken);
+
+        const expiresAt = new Date(oldRefreshToken.createdAt);
+        if (expiresAt > now) {
+            throw new UnauthorizedException('Invalid refresh token');
+        }
+
+        const user = await this.usersService.getOneByUserId(oldRefreshToken.userId);
+        if (!user) {
+            throw new UnauthorizedException('Invalid refresh token');
+        }
 
         return this.generateTokens(user);
     }
 
-    private generateRefreshToken(): string {
-        return crypto.randomBytes(32).toString('hex');
-    }
-
-    private hashToken(token: string): string {
-        return crypto
-            .createHash('sha256')
-            .update(token)
-            .digest('hex');
-    }
-
+    // приватные методы сервиса
     private async createRefreshToken(user: UserEntity) {
+        await this.deleteRefreshTokens(user.userId);
+
         const rawRefreshToken = this.generateRefreshToken();
         const hashedRefreshToken = this.hashToken(rawRefreshToken);
 
         const rawExpiresAt = new Date();
-        rawExpiresAt.setDate(rawExpiresAt.getDate() + 30);
+        rawExpiresAt.setDate(rawExpiresAt.getDate() + 30); // срок жизни рефреша 30 дней
         const expiresAt = rawExpiresAt.toISOString();
-
-        await this.sqlService.sql`
-            DELETE FROM refresh_tokens
-            WHERE user_id = ${user.userId};
-        `;
 
         await this.sqlService.sql`
             INSERT INTO refresh_tokens
@@ -111,7 +109,16 @@ export class AuthService {
         return rawRefreshToken;
     }
 
+    private async deleteRefreshTokens(userId: string) {
+        // удаляем абсолютно все рефреши юзера (для безопасности)
+        await this.sqlService.sql`
+            DELETE FROM refresh_tokens
+            WHERE user_id = ${userId};
+        `;
+    }
+
     private async generateTokens(user: UserEntity): Promise<AuthResponseDto> {
+        // payload нельзя создавать через new JwtPayloadDto, иначе будет ошибка
         const payload = {
             userId: user.userId,
             email: user.email,
@@ -121,5 +128,17 @@ export class AuthService {
         const rawRefreshToken = await this.createRefreshToken(user);
 
         return new AuthResponseDto(accessToken, rawRefreshToken);
+    }
+
+    // вспомогательные методы
+    private generateRefreshToken(): string {
+        return crypto.randomBytes(32).toString('hex');
+    }
+
+    private hashToken(token: string): string {
+        return crypto
+            .createHash('sha256')
+            .update(token)
+            .digest('hex');
     }
 }

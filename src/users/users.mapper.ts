@@ -1,13 +1,13 @@
 import { UserResponseDto } from "./dto";
 import { DatabaseUser } from "./interfaces/database-user.interface";
-import { UserEntity } from "./user.entity";
+import { UserEntity } from "./entities/user.entity";
 
 export class UsersMapper {
-    static toUserResponseDTO(dbUser: DatabaseUser): UserResponseDto {
+    static toUserResponseDTO(userEntity: UserEntity): UserResponseDto {
         const dto = new UserResponseDto();
-        dto.userId = dbUser.user_id;
-        dto.email = dbUser.email;
-        dto.createdAt = dbUser.created_at;
+        dto.userId = userEntity.userId;
+        dto.email = userEntity.email;
+        dto.createdAt = userEntity.createdAt;
         return dto;
     }
 

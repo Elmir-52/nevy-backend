@@ -1,22 +1,32 @@
-import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from "./dto";
 import { SqlService } from "src/postgres/sql.service";
 import { UsersMapper } from "./users.mapper";
 import { DatabaseUser } from "./interfaces/database-user.interface";
-import { UserEntity } from "./user.entity";
+import { UserEntity } from "./entities/user.entity";
 
 @Injectable()
 export class UsersService {
     constructor(private sqlService: SqlService) {}
 
-    async getOne(userId: string): Promise<UserEntity> {
+    async getOneToResponse(userId: string): Promise<UserResponseDto> {
+        const userEntity: UserEntity | undefined = await this.getOneByUserId(userId);
+
+        if (!userEntity) {
+            throw new NotFoundException('User not found');
+        }
+
+        return UsersMapper.toUserResponseDTO(userEntity);
+    }
+
+    async getOneByUserId(userId: string): Promise<UserEntity | undefined> {
         const [ dbUser ] = await this.sqlService.sql<DatabaseUser[]>`
             SELECT * FROM users
             WHERE user_id = ${userId};
         `;
 
         if (!dbUser) {
-            throw new NotFoundException('User not found');
+            return;
         }
 
         return UsersMapper.toUserEntity(dbUser);
@@ -35,7 +45,7 @@ export class UsersService {
         return UsersMapper.toUserEntity(dbUser);
     }
 
-    async create(data: CreateUserDto): Promise<UserResponseDto> {
+    async create(data: CreateUserDto): Promise<UserEntity> {
         const [ dbUser ] = await this.sqlService.sql<DatabaseUser[]>`
             INSERT INTO users 
             (email, password)
@@ -43,11 +53,11 @@ export class UsersService {
             RETURNING * ;
         `;
 
-        return UsersMapper.toUserResponseDTO(dbUser);
+        return UsersMapper.toUserEntity(dbUser);
     }
 
     async update(userId: string, data: UpdateUserDto): Promise<void> {
-        await this.sqlService.sql`
+        await this.sqlService.sql<DatabaseUser[]>`
             UPDATE users
             SET password = ${data.password}
             WHERE user_id = ${userId};

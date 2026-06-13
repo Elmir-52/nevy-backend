@@ -1,8 +1,6 @@
-import { Body, Controller, Headers, Post } from "@nestjs/common";
+import { Body, Controller, Headers, HttpCode, HttpStatus, Param, Post } from "@nestjs/common";
 import { AuthService } from "./auth.service";
-import { AuthResponseDto } from "./dto/auth-response.dto";
-import { LogingDto } from "./dto/login.dto";
-import { RegisterDto } from "./dto/register.dto";
+import { AuthResponseDto, GetAuthParams, LoginDto, RegisterDto } from "./dto";
 
 @Controller('auth')
 export class AuthController {
@@ -14,11 +12,17 @@ export class AuthController {
     }
 
     @Post('login')
-    login(@Body() data: LogingDto): Promise<AuthResponseDto> {
+    login(@Body() data: LoginDto): Promise<AuthResponseDto> {
         return this.authService.login(data);
     }
 
-    @Post('update-tokens')
+    @Post('logout/:userId')
+    @HttpCode(HttpStatus.NO_CONTENT)
+    logout(@Param() { userId }: GetAuthParams): Promise<void> {
+        return this.authService.logout(userId);
+    }
+
+    @Post('refresh')
     updateTokens(@Headers('Authorization') rawRefreshToken: string): Promise<AuthResponseDto> {
         return this.authService.updateTokens(rawRefreshToken);
     }
