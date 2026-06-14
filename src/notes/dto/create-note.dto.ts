@@ -1,9 +1,6 @@
-import { IsHexColor, IsString, IsUUID, Length } from "class-validator";
+import { IsHexColor, IsString, Length } from "class-validator";
 
 export class CreateNoteDto {
-    @IsUUID()
-    userId!: string;
-
     @IsString()
     title!: string;
 

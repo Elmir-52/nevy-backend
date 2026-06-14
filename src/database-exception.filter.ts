@@ -23,6 +23,11 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
             case '22001':
                 status = HttpStatus.BAD_REQUEST;
                 message = 'Data not valid';
+                break;
+            case '23503':
+                status = HttpStatus.BAD_REQUEST;
+                message = 'Data not valid';
+                break;
         }
 
         return responce.status(status).json({

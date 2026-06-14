@@ -21,10 +21,10 @@ export class NotesService {
         return notesResponse;
     }
 
-    async getOne(noteId: string): Promise<NoteResponseDto> {
+    async getOne(noteId: string, userId: string): Promise<NoteResponseDto> {
         const [ dbNote ] = await this.sqlService.sql<DatabaseNote[]>`
             SELECT * FROM notes
-            WHERE note_id = ${noteId};
+            WHERE note_id = ${noteId} AND user_id = ${userId};
         `;
 
         if (!dbNote) {
@@ -35,33 +35,35 @@ export class NotesService {
     }
 
     
-    async create(data: CreateNoteDto): Promise<void> {
-        await this.sqlService.sql`
+    async create(data: CreateNoteDto, userId: string): Promise<NoteResponseDto> {
+        const [ dbNote ] = await this.sqlService.sql<DatabaseNote[]>`
             INSERT INTO notes
             (user_id, title, content, color)
             VALUES (
-                ${data.userId},
-                ${data.title}, 
-                ${data.content}, 
+                ${userId},
+                ${data.title},
+                ${data.content},
                 ${data.color}
-            );
+            )
+            RETURNING * ;
         `;
+
+        return NotesMapper.toNoteResponseDto(dbNote);
     }
 
-
-    async update(noteId: string, data: UpdateNoteDto): Promise<void> {
+    async update(noteId: string, data: UpdateNoteDto, userId: string): Promise<void> {
         await this.sqlService.sql`
             UPDATE notes
             SET title = ${data.title}, content = ${data.content}, updated_at = NOW()
-            WHERE note_id = ${noteId};
+            WHERE note_id = ${noteId} AND user_id = ${userId};
         `;
     }
 
     
-    async delete(noteId: string): Promise<void> {
+    async delete(noteId: string, userId: string): Promise<void> {
         await this.sqlService.sql`
             DELETE FROM notes
-            WHERE note_id = ${noteId};
+            WHERE note_id = ${noteId} AND user_id = ${userId};
         `;
     }
 }

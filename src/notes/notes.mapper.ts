@@ -5,7 +5,6 @@ export class NotesMapper {
     static toNoteResponseDto(dbNote: DatabaseNote): NoteResponseDto {
         const dto = new NoteResponseDto();
         dto.noteId = dbNote.note_id;
-        dto.userId = dbNote.user_id
         dto.title = dbNote.title;
         dto.content = dbNote.content;
         dto.createdAt = dbNote.created_at;

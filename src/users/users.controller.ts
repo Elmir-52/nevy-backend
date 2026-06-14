@@ -4,6 +4,7 @@ import { UsersService } from "./users.service";
 import { AuthGuard } from "src/auth/auth.guard";
 import { JwtPayloadDto } from "src/auth/dto/jwt-payload.dto";
 import { UserEntity } from "./entities/user.entity";
+import { CurrentUser } from "src/auth/decorators/current-user.decorator";
 
 @Controller('users')
 export class UsersController {
@@ -11,16 +12,16 @@ export class UsersController {
 
     @Get('me')
     @UseGuards(AuthGuard)
-    getProfile(@Request() req) {
-        const requestUser: JwtPayloadDto = req.user;
-        return this.usersServise.getOneToResponse(requestUser.userId);
+    getProfile(@CurrentUser() user: JwtPayloadDto) {
+        return this.usersServise.getOneToResponse(user.userId);
     }
 
-    @Post()
-    async create(@Body() data: CreateUserDto): Promise<UserResponseDto> {
-        const user: UserEntity = await this.usersServise.create(data);
-        return this.usersServise.getOneToResponse(user.userId);
-    } 
+    // пока что эндпоинт создания не нужен
+    // @Post()
+    // async create(@Body() data: CreateUserDto): Promise<UserResponseDto> {
+    //     const user: UserEntity = await this.usersServise.create(data);
+    //     return this.usersServise.getOneToResponse(user.userId);
+    // }
 
     // Пока что убираем изменение пароля, пока не встроена двойная аутентификация
     // @Patch('me')
@@ -34,8 +35,7 @@ export class UsersController {
     @Delete('me')
     @UseGuards(AuthGuard)
     @HttpCode(HttpStatus.NO_CONTENT)
-    delete(@Request() req): Promise<void> {
-        const requestUser: JwtPayloadDto = req.user;
-        return this.usersServise.delete(requestUser.userId);
+    delete(@CurrentUser() user: JwtPayloadDto): Promise<void> {
+        return this.usersServise.delete(user.userId);
     }
 }

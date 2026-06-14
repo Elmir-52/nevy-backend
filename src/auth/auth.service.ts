@@ -34,7 +34,7 @@ export class AuthService {
 
         const createdUser: UserEntity = await this.usersService.create(createUser);
         if (!createdUser) {
-            throw new InternalServerErrorException('Internal server error');
+            throw new InternalServerErrorException('Failed to create user');
         }
         
         return this.generateTokens(createdUser);
@@ -44,7 +44,7 @@ export class AuthService {
         const user: UserEntity | undefined = await this.usersService.getUserByEmail(data.email);
 
         if (!user) {
-            throw new UnauthorizedException('User not found');
+            throw new UnauthorizedException('Email or password is invalid');
         }
 
         const isPasswordValid = await bcrypt.compare(data.password, user.password);
@@ -55,11 +55,19 @@ export class AuthService {
         return this.generateTokens(user);
     }
 
-    async logout(userId: string): Promise<void> {
-        await this.deleteRefreshTokens(userId);
+    async logout(rawRefreshToken: string): Promise<void> {
+        if (!rawRefreshToken.includes(':')) {
+            throw new UnauthorizedException('Invalid refresh token');
+        }
+        const userId = rawRefreshToken.split(':')[1];
+        return await this.deleteRefreshTokens(userId);
     }
 
-    async updateTokens(rawRefreshToken: string): Promise<AuthDto> {
+    async refreshTokens(rawRefreshToken: string): Promise<AuthDto> {
+        if (!rawRefreshToken.includes(':')) {
+            throw new UnauthorizedException('Invalid refresh token');
+        }
+        const userId = rawRefreshToken.split(':')[1];
         const hashedRefreshToken: string = this.hashToken(rawRefreshToken);
         const now: Date = new Date();
 
@@ -68,18 +76,21 @@ export class AuthService {
             WHERE token_hash = ${hashedRefreshToken};
         `;
 
-        await this.deleteRefreshTokens(dbOldRefreshToken.user_id);
-
         if (!dbOldRefreshToken) {
+            // если токен не найден, то удаляем абсолютно все токены пользователя
+            await this.deleteRefreshTokens(userId);
             throw new UnauthorizedException('Invalid refresh token');
         }
 
         const oldRefreshToken: RefreshTokenEntity = AuthMapper.toRefreshTokenEntity(dbOldRefreshToken);
 
-        const expiresAt = new Date(oldRefreshToken.createdAt);
-        if (expiresAt > now) {
+        const expiresAt = new Date(oldRefreshToken.expiresAt);
+        if (expiresAt < now) {
+            await this.deleteRefreshToken(oldRefreshToken.tokenHash);
             throw new UnauthorizedException('Invalid refresh token');
         }
+
+        await this.deleteRefreshToken(oldRefreshToken.tokenHash);
 
         const user = await this.usersService.getOneByUserId(oldRefreshToken.userId);
         if (!user) {
@@ -89,11 +100,9 @@ export class AuthService {
         return this.generateTokens(user);
     }
 
-    // приватные методы сервиса
+    // приватные хелперы
     private async createRefreshToken(user: UserEntity): Promise<string> {
-        await this.deleteRefreshTokens(user.userId);
-
-        const rawRefreshToken: string = this.generateRefreshToken();
+        const rawRefreshToken: string = this.generateRefreshToken(user.userId);
         const hashedRefreshToken: string = this.hashToken(rawRefreshToken);
 
         const rawExpiresAt: Date = new Date();
@@ -109,8 +118,14 @@ export class AuthService {
         return rawRefreshToken;
     }
 
+    private async deleteRefreshToken(hashedRefreshToken: string) {
+        await this.sqlService.sql`
+            DELETE FROM refresh_tokens
+            WHERE token_hash = ${hashedRefreshToken};
+        `;
+    }
+
     private async deleteRefreshTokens(userId: string) {
-        // удаляем абсолютно все рефреши юзера (для безопасности)
         await this.sqlService.sql`
             DELETE FROM refresh_tokens
             WHERE user_id = ${userId};
@@ -130,9 +145,9 @@ export class AuthService {
         return new AuthDto(accessToken, rawRefreshToken);
     }
 
-    // вспомогательные методы
-    private generateRefreshToken(): string {
-        return crypto.randomBytes(32).toString('hex');
+    private generateRefreshToken(userId: string): string {
+        const randomPart = crypto.randomBytes(32).toString('hex');
+        return `${randomPart}:${userId}`;
     }
 
     private hashToken(token: string): string {
