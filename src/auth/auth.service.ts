@@ -99,13 +99,7 @@ export class AuthService {
 
     // приватные хелперы
     private async createRefreshToken(user: UserEntity): Promise<string> {
-        const refreshPayload: JwtPayloadDto = {
-            type: 'refresh',
-            userId: user.userId,
-            email: user.email,
-        }
-
-        const rawRefreshToken: string = await this.jwtService.signAsync(refreshPayload);
+        const rawRefreshToken: string = await this.generateRefreshToken(user);
         const hashedRefreshToken: string = this.hashToken(rawRefreshToken);
 
         const rawExpiresAt: Date = new Date();
@@ -151,9 +145,14 @@ export class AuthService {
         return new AuthDto(accessToken, rawRefreshToken);
     }
 
-    private generateRefreshToken(userId: string): string {
-        const randomPart = crypto.randomBytes(32).toString('hex');
-        return `${randomPart}:${userId}`;
+    private async generateRefreshToken(user: UserEntity): Promise<string> {
+        const refreshPayload: JwtPayloadDto = {
+            type: 'refresh',
+            userId: user.userId,
+            email: user.email,
+        }
+
+        return this.jwtService.signAsync(refreshPayload);
     }
 
     private hashToken(token: string): string {
