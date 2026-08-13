@@ -64,10 +64,7 @@ export class AuthService {
     }
 
     async refreshTokens(rawRefreshToken: string): Promise<AuthDto> {
-        if (!rawRefreshToken.includes(':')) {
-            throw new UnauthorizedException('Invalid refresh token');
-        }
-        const userId = rawRefreshToken.split(':')[1];
+        const refreshPayload: JwtPayloadDto = await this.jwtService.verifyAsync(rawRefreshToken);
         const hashedRefreshToken: string = this.hashToken(rawRefreshToken);
         const now: Date = new Date();
 
@@ -78,7 +75,7 @@ export class AuthService {
 
         if (!dbOldRefreshToken) {
             // если токен не найден, то удаляем абсолютно все токены пользователя
-            await this.deleteRefreshTokens(userId);
+            await this.deleteRefreshTokens(refreshPayload.userId);
             throw new UnauthorizedException('Invalid refresh token');
         }
 
@@ -102,7 +99,13 @@ export class AuthService {
 
     // приватные хелперы
     private async createRefreshToken(user: UserEntity): Promise<string> {
-        const rawRefreshToken: string = this.generateRefreshToken(user.userId);
+        const refreshPayload: JwtPayloadDto = {
+            type: 'refresh',
+            userId: user.userId,
+            email: user.email,
+        }
+
+        const rawRefreshToken: string = await this.jwtService.signAsync(refreshPayload);
         const hashedRefreshToken: string = this.hashToken(rawRefreshToken);
 
         const rawExpiresAt: Date = new Date();
@@ -134,12 +137,13 @@ export class AuthService {
 
     private async generateTokens(user: UserEntity): Promise<AuthDto> {
         // payload нельзя создавать через new JwtPayloadDto, иначе будет ошибка
-        const payload: JwtPayloadDto = {
+        const accessPayload: JwtPayloadDto = {
+            type: 'access',
             userId: user.userId,
             email: user.email,
         }
 
-        const accessToken: string = await this.jwtService.signAsync(payload, {
+        const accessToken: string = await this.jwtService.signAsync(accessPayload, {
             expiresIn: '1200s',
         });
         const rawRefreshToken: string = await this.createRefreshToken(user);
