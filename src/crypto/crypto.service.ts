@@ -9,8 +9,8 @@ export class CryptoService {
     private readonly authTagLength = 16;
     private readonly key: Buffer;
 
-    constructor(configService: ConfigService) {
-        const encryptionKey = configService.get<string>(
+    constructor(private configService: ConfigService) {
+        const encryptionKey = this.configService.get<string>(
             'ENCRYPTION_KEY',
         );
 
