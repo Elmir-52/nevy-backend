@@ -139,7 +139,9 @@ export class AuthService {
             email: user.email,
         }
 
-        const accessToken: string = await this.jwtService.signAsync(payload);
+        const accessToken: string = await this.jwtService.signAsync(payload, {
+            expiresIn: '1200s',
+        });
         const rawRefreshToken: string = await this.createRefreshToken(user);
 
         return new AuthDto(accessToken, rawRefreshToken);
