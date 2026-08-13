@@ -41,10 +41,10 @@ export class NotesService {
     }
 
     
-    async create(data: CreateNoteDto, userId: string): Promise<NoteResponseDto> {
+    async create(data: CreateNoteDto, userId: string): Promise<void> {
         const encryptedNoteContent = this.cryptoServise.encrypt(data.content);
 
-        const [ dbNote ] = await this.sqlService.sql<DatabaseNote[]>`
+        await this.sqlService.sql<DatabaseNote[]>`
             INSERT INTO notes
             (user_id, title, content, color)
             VALUES (
@@ -52,11 +52,8 @@ export class NotesService {
                 ${data.title},
                 ${encryptedNoteContent},
                 ${data.color}
-            )
-            RETURNING * ;
+            );
         `;
-
-        return NotesMapper.toNoteResponseDto(dbNote);
     }
 
     async update(

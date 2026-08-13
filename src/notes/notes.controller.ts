@@ -29,7 +29,7 @@ export class NotesController {
     create(
         @Body() data: CreateNoteDto,
         @CurrentUser() user: JwtPayloadDto,
-    ): Promise<NoteResponseDto> {
+    ): Promise<void> {
         return this.notesService.create(data, user.userId);
     }
 
