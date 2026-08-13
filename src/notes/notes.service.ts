@@ -3,10 +3,14 @@ import { SqlService } from "src/postgres/sql.service";
 import { DatabaseNote } from "./interfaces/database-note.interface";
 import { NotesMapper } from "./notes.mapper";
 import { CreateNoteDto, NoteResponseDto, UpdateNoteDto } from "./dto";
+import { CryptoService } from "src/crypto/crypto.service";
 
 @Injectable()
 export class NotesService {
-    constructor(private sqlService: SqlService) {}
+    constructor(
+        private sqlService: SqlService,
+        private cryptoServise: CryptoService
+    ) {}
 
     async getMany(userId: string): Promise<NoteResponseDto[]> {
         const dbNotes = await this.sqlService.sql<DatabaseNote[]>`
@@ -31,18 +35,22 @@ export class NotesService {
             throw new NotFoundException('Not found');
         }
 
-        return NotesMapper.toNoteResponseDto(dbNote);
+        const noteForResponse = NotesMapper.toNoteResponseDto(dbNote);
+        noteForResponse.content = this.cryptoServise.decrypt(noteForResponse.content);
+        return noteForResponse;
     }
 
     
     async create(data: CreateNoteDto, userId: string): Promise<NoteResponseDto> {
+        const encryptedNoteContent = this.cryptoServise.encrypt(data.content);
+
         const [ dbNote ] = await this.sqlService.sql<DatabaseNote[]>`
             INSERT INTO notes
             (user_id, title, content, color)
             VALUES (
                 ${userId},
                 ${data.title},
-                ${data.content},
+                ${encryptedNoteContent},
                 ${data.color}
             )
             RETURNING * ;
@@ -51,10 +59,18 @@ export class NotesService {
         return NotesMapper.toNoteResponseDto(dbNote);
     }
 
-    async update(noteId: string, data: UpdateNoteDto, userId: string): Promise<void> {
+    async update(
+        noteId: string, 
+        data: UpdateNoteDto, 
+        userId: string
+    ): Promise<void> {
+        const encryptedNoteContent = this.cryptoServise.encrypt(data.content);
+
         await this.sqlService.sql`
             UPDATE notes
-            SET title = ${data.title}, content = ${data.content}, updated_at = NOW()
+            SET title = ${data.title}, 
+                content = ${encryptedNoteContent}, 
+                updated_at = NOW()
             WHERE note_id = ${noteId} AND user_id = ${userId};
         `;
     }
