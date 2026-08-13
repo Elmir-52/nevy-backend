@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { SqlModule } from './postgres/sql.module';
 import { NotesModule } from './notes/notes.module';
 import { AuthModule } from './auth/auth.module';
+import { CryptoModule } from './crypto/crypto.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
       isGlobal: true, // Делает модуль доступным во всем приложении
     }),
     SqlModule,
+    CryptoModule,
 
     UsersModule,
     NotesModule,
