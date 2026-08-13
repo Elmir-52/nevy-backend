@@ -23,7 +23,7 @@ export class AuthService {
         const user: UserEntity | undefined = await this.usersService.getUserByEmail(data.email);
 
         if (user) {
-            throw new ConflictException('User already exists');
+            throw new ConflictException('Such user already exists');
         }
 
         const hashPassword = await bcrypt.hash(data.password, 10);
