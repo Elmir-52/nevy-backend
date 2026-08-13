@@ -130,6 +130,13 @@ export class AuthService {
     }
 
     private async generateTokens(user: UserEntity): Promise<AuthDto> {
+        const accessToken: string = await this.generateAccessToken(user)
+        const rawRefreshToken: string = await this.createRefreshToken(user);
+
+        return new AuthDto(accessToken, rawRefreshToken);
+    }
+
+    private async generateAccessToken(user: UserEntity): Promise<string> {
         // payload нельзя создавать через new JwtPayloadDto, иначе будет ошибка
         const accessPayload: JwtPayloadDto = {
             type: 'access',
@@ -137,12 +144,9 @@ export class AuthService {
             email: user.email,
         }
 
-        const accessToken: string = await this.jwtService.signAsync(accessPayload, {
+        return this.jwtService.signAsync(accessPayload, {
             expiresIn: '1200s',
         });
-        const rawRefreshToken: string = await this.createRefreshToken(user);
-
-        return new AuthDto(accessToken, rawRefreshToken);
     }
 
     private async generateRefreshToken(user: UserEntity): Promise<string> {
