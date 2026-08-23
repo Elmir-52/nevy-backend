@@ -56,10 +56,8 @@ export class AuthService {
     }
 
     async logout(rawRefreshToken: string): Promise<void> {
-        if (!rawRefreshToken.includes(':')) {
-            throw new UnauthorizedException('Invalid refresh token');
-        }
-        const userId = rawRefreshToken.split(':')[1];
+        const refreshPayload: JwtPayloadDto = await this.jwtService.verifyAsync(rawRefreshToken);
+        const userId = refreshPayload.userId;
         return await this.deleteRefreshTokens(userId);
     }
 
